@@ -1,0 +1,201 @@
+[
+    {
+        "id": "gateway-flow",
+        "type": "tab",
+        "label": "CO2 Sensor Gateway",
+        "disabled": false,
+        "info": "Gateway for CO2 sensor to backend API"
+    },
+    {
+        "id": "mqtt-in",
+        "type": "mqtt in",
+        "z": "gateway-flow",
+        "name": "CO2 Sensor Data In",
+        "topic": "iot/co2device/data",
+        "qos": "1",
+        "datatype": "json",
+        "broker": "mqtt-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "debug-raw-data",
+                "prepare-data"
+            ]
+        ]
+    },
+    {
+        "id": "debug-raw-data",
+        "type": "debug",
+        "z": "gateway-flow",
+        "name": "Debug Raw Data",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 350,
+        "y": 60,
+        "wires": []
+    },
+    {
+        "id": "prepare-data",
+        "type": "function",
+        "z": "gateway-flow",
+        "name": "Format Data for Backend",
+        "func": "// Extract relevant data from MQTT payload\nconst payload = msg.payload;\n\n// Create a new message object to send to the backend\nmsg.payload = {\n    deviceId: payload.deviceId || \"co2-sensor-001\", // Use the deviceId from the sensor or default\n    co2_ppm: payload.co2_ppm,                      // CO2 level\n    battery_percent: payload.battery_percent,      // Battery level\n    timestamp: payload.timestamp || new Date().toISOString() // Timestamp\n};\n\n// Log the prepared data\nnode.warn(\"Sending to backend: \" + JSON.stringify(msg.payload));\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 140,
+        "wires": [
+            [
+                "debug-formatted",
+                "send-to-backend"
+            ]
+        ]
+    },
+    {
+        "id": "debug-formatted",
+        "type": "debug",
+        "z": "gateway-flow",
+        "name": "Debug Formatted Data",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 640,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "send-to-backend",
+        "type": "http request",
+        "z": "gateway-flow",
+        "name": "Send to Backend API",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://localhost:5001/api/readings/gateway",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Content-Type",
+                "keyValue": "Content-Type",
+                "valueType": "other",
+                "valueValue": "application/json"
+            }
+        ],
+        "x": 650,
+        "y": 180,
+        "wires": [
+            [
+                "debug-response",
+                "handle-response"
+            ]
+        ]
+    },
+    {
+        "id": "debug-response",
+        "type": "debug",
+        "z": "gateway-flow",
+        "name": "Debug API Response",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 880,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "handle-response",
+        "type": "function",
+        "z": "gateway-flow",
+        "name": "Handle API Response",
+        "func": "// Check if the API call was successful\nconst statusCode = msg.statusCode;\n\nif (statusCode >= 200 && statusCode < 300) {\n    // Success\n    node.status({fill:\"green\", shape:\"dot\", text:\"Success\"});\n    node.warn(\"Data successfully sent to backend\");\n} else {\n    // Error\n    node.status({fill:\"red\", shape:\"ring\", text:\"Error: \" + statusCode});\n    node.error(\"Failed to send data to backend: \" + JSON.stringify(msg.payload));\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 880,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "test-inject",
+        "type": "inject",
+        "z": "gateway-flow",
+        "name": "Test Data Injection",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"deviceId\":\"co2-sensor-001\",\"co2_ppm\":800,\"battery_percent\":85,\"timestamp\":\"2023-10-05T12:00:00.000Z\"}",
+        "payloadType": "json",
+        "x": 160,
+        "y": 220,
+        "wires": [
+            [
+                "prepare-data"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-broker",
+        "type": "mqtt-broker",
+        "name": "MQTT Broker",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    }
+] 
