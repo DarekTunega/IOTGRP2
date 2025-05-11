@@ -19,7 +19,8 @@ function CO2Graph({ data }) {
     ctx.clearRect(0, 0, width, height);
 
     // Find min and max values for scaling
-    const values = data.map(item => item.co2Level);
+    const reversedData = [...data].reverse();
+    const values = reversedData.map(item => item.co2Level);
     const maxValue = Math.max(...values, 1500); // Set minimum maximum to 1500 for better visualization
     const minValue = Math.min(...values, 400); // Set maximum minimum to 400 for better visualization
     const range = maxValue - minValue;
@@ -31,7 +32,7 @@ function CO2Graph({ data }) {
     // Draw the line
     ctx.beginPath();
 
-    data.forEach((item, index) => {
+    reversedData.forEach((item, index) => {
       const x = (index / (data.length - 1)) * width;
       const y = height - ((item.co2Level - minValue) / range) * (height - 20) - 10; // Leave some padding
 

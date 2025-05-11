@@ -10,7 +10,6 @@ function Buildings() {
   const [buildings, setBuildings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [newBuildingName, setNewBuildingName] = useState('');
   const [isAddingBuilding, setIsAddingBuilding] = useState(false);
 
@@ -45,8 +44,8 @@ function Buildings() {
       return;
     }
     if (!token) {
-        alert('Authentication error. Please log in again.');
-        return;
+      alert('Authentication error. Please log in again.');
+      return;
     }
 
     setError(null);
@@ -58,6 +57,17 @@ function Buildings() {
     } catch (err) {
       console.error("Failed to add building:", err);
       setError(err.message || 'Failed to add building');
+    }
+  };
+
+  const handleDeleteBuilding = async (buildingId) => {
+    if (!window.confirm('Are you sure you want to delete this building?')) return;
+    try {
+      await apiClient(`/buildings/${buildingId}`, 'DELETE', null, token);
+      setBuildings((prev) => prev.filter(b => b._id !== buildingId));
+    } catch (err) {
+      console.error('Failed to delete building:', err);
+      alert('Error deleting building');
     }
   };
 
@@ -114,12 +124,18 @@ function Buildings() {
             ) : (
               buildings.map(building => (
                 <Card key={building._id} className="p-4 hover:shadow-lg transition-shadow">
-                  <Link to={`/buildings/${building._id}`} className="block">
-                    <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center">
+                    <Link to={`/buildings/${building._id}`} className="block">
                       <h2 className="text-xl font-semibold text-indigo-800">{building.name}</h2>
                       <span className="text-sm text-gray-500">View Devices →</span>
-                    </div>
-                  </Link>
+                    </Link>
+                    <button
+                      onClick={() => handleDeleteBuilding(building._id)}
+                      className="ml-4 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </Card>
               ))
             )}

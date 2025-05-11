@@ -73,6 +73,21 @@ export const receiveGatewayData = async (req, res) => {
       timestamp: timestamp ? new Date(timestamp) : new Date()
     });
 
+    // 🚨 Send Discord notification if CO2 is critical
+    if (co2_ppm >= 1400 && device.discordWebhook) {
+      try {
+        await fetch(device.discordWebhook, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content: `🚨 Kritická hladina CO₂: ${co2_ppm} ppm\nZariadenie: **${device.name || device.deviceId}**`
+          })
+        });
+      } catch (notifyError) {
+        console.error('❗ Chyba pri odosielaní na Discord:', notifyError);
+      }
+    }
+
     res.status(201).json({ message: 'Data received and stored', reading });
   } catch (error) {
     console.error('Error processing gateway data:', error);

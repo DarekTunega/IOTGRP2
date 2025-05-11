@@ -24,6 +24,10 @@ const DeviceSchema = new mongoose.Schema({
     type: Number,
     default: 100
   },
+  discordWebhook: {
+    type: String,
+    default: null
+  },
   readings: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'CO2Reading'
