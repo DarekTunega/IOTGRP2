@@ -9,7 +9,7 @@ function Navbar() {
   return (
     <nav className="fixed start-0 top-0 bottom-0 z-50 flex h-full w-80 flex-col overflow-auto bg-slate-50 shadow-md transition-transform duration-500 ease-out lg:w-64 lg:translate-x-0">
       <div className="flex h-20 w-full flex-none items-center justify-between px-8 border-b">
-        <h2 className="text-xl text-indigo-900 font-bold">COVID-19 Tracker</h2>
+        <h2 className="text-xl text-indigo-900 font-bold">CO2 Monitor</h2>
       </div>
       <div className="flex flex-col flex-1">
         <ul className="w-full space-y-1.5 px-8 py-4">
@@ -31,14 +31,6 @@ function Navbar() {
                   className="inline-flex items-center gap-2 rounded-lg bg-indigo-100 px-4 py-2 text-sm font-semibold text-indigo-900 transition w-full"
                 >
                   <span>Buildings</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/menu"
-                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-100 px-4 py-2 text-sm font-semibold text-indigo-900 transition w-full"
-                >
-                  <span>Menu</span>
                 </Link>
               </li>
             </>

@@ -7,7 +7,6 @@ import {
 
   import './index.css';
   import Home from './Home';
-  import Menu from './Menu';
   import Register from './Register';
   import Login from './Login';
   import Buildings from './Buildings';
@@ -18,7 +17,7 @@ import {
   // Wrapper for Login that redirects if already logged in
   function LoginRoute() {
 	const { isLoggedIn } = useAuth();
-	return isLoggedIn ? <Navigate to="/menu" /> : <Login />;
+	return isLoggedIn ? <Navigate to="/" /> : <Login />;
   }
 
   function App() {
@@ -31,14 +30,6 @@ import {
 			<Route path="/register" element={<Register />} />
 
 			{/* Protected Routes */}
-			<Route
-			  path="/menu"
-			  element={
-				<ProtectedRoute>
-				  <Menu />
-				</ProtectedRoute>
-			  }
-			/>
 			<Route
 			  path="/buildings"
 			  element={

@@ -20,7 +20,7 @@ function Login() {
       const success = await login({ email, password });
 
       if (success) {
-        navigate('/menu'); // Redirect to protected route after login
+        navigate('/'); // Redirect to Home after login
       } else {
         setError('Login failed. Please check your credentials and try again.');
       }

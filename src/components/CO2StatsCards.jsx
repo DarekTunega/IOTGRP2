@@ -25,7 +25,7 @@ function CO2StatsCards({ currentLevel, dailyAverage, peakValue, deviceName, devi
     } else if (average < 800) {
       return {
         status: 'Good',
-        description: 'Acceptable air quality',
+        description: 'Skibidi air quality',
         color: 'text-green-500',
         bgColor: 'bg-green-100',
         borderColor: 'border-green-500'
