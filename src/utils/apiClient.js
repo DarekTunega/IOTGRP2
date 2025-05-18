@@ -1,4 +1,5 @@
-const API_URL = '/api'; // Use relative URL for API proxy
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+const API_URL = `${BACKEND_URL}/api`; // Use environment variable for API URL
 
 /**
  * Makes an authenticated API request.

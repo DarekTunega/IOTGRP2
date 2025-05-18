@@ -6,8 +6,8 @@ import apiClient from '../utils/apiClient';
 // Create the auth context
 const AuthContext = createContext();
 
-// API base URL (using relative URL for API proxy)
-const API_URL = '';
+// API base URL (using environment variable)
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 // Custom hook to use the auth context
 export const useAuth = () => {
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
   // Login function - now calls the backend API
   const login = async (credentials) => {
     try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
+      const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }) => {
   // Register function - calls the backend API
   const register = async (userData) => {
     try {
-      const response = await fetch(`${API_URL}/api/auth/register`, {
+      const response = await fetch(`${BACKEND_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Call logout endpoint if needed
       if (token) {
-        await fetch(`${API_URL}/api/auth/logout`, {
+        await fetch(`${BACKEND_URL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
