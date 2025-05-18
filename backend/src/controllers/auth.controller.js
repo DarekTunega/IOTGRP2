@@ -26,8 +26,8 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: 'Email already exists!' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashedPassword });
+    // Don't hash password here - the model's pre-save hook will handle it
+    const user = await User.create({ name, email, password });
 
     res.status(201).json({
       message: 'Registration successful!',
