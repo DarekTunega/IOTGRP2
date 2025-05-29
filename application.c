@@ -2,7 +2,7 @@
 // SDK API description https://sdk.hardwario.com/
 // Forum https://forum.hardwario.com/
 //579881372451
-#include <application.h>
+#include "application.h"
 #include <twr_module_co2.h>
 #include <twr_module_battery.h>
 #include <twr_radio.h>
@@ -11,23 +11,24 @@
 #include <twr_scheduler.h>
 #include <twr_log.h>
 #include <twr_button.h>
+#include "twr_tick.h"
 
 #define DEVICE_ID "co2-sensor-001"
 
-#define MEASUREMENT_INTERVAL_MS (1 * 30 * 1000)
-#define MANUAL_MEASUREMENT_INTERVAL_MS (1 * 1000)
+#define MEASUREMENT_INTERVAL_MS (1 * 30 * 1000) // 30 seconds
+#define MANUAL_MEASUREMENT_INTERVAL_MS (1 * 1000) //todo delete later
 
 #define CO2_THRESHOLD_VENTILATE 800.0f
 #define CO2_THRESHOLD_DANGEROUS 1600.0f
 
 #define ONBOARD_LED_PIN TWR_GPIO_LED
 #define BUTTON_PIN TWR_GPIO_BUTTON
-#define BUZZER_PIN TWR_GPIO_P0 // Using P0 for the buzzer
+#define BUZERANT_PIN TWR_GPIO_P12
 
-#define BUZZER_BEEP_INTERVAL_MS (10 * 1000) // 10 seconds
-#define BUZZER_BEEP_DURATION_MS 200 //beep delay
+#define BUZERANT_INTERVAL_MS (10 * 1000) // 10 seconds
+#define BUZERANT_BEEP_DURATION_MS 1000
 
-// twr_gpio_channel_t buzzer_pin = BUZZER_PIN;
+// twr_gpio_channel_t buzzer_pin = BUZERANT_PIN;
 // bool buzzer_active = false;
 
 twr_led_t onboard_led;
@@ -38,9 +39,7 @@ char device_id_str[25];
 
 void co2_event_handler(twr_module_co2_event_t event, void *event_param);
 void battery_event_handler(twr_module_battery_event_t event, void *event_param);
-//void button_event_handler(twr_button_t *self, twr_button_event_t event, void *event_param);
 
-// Forward declaration for scheduler tasks
 void buzzer_off_task(void *param);
 void schedule_next_beep_task(void *param);
 
@@ -70,7 +69,6 @@ bool dangerous_co2_level_active = false;
 
 void application_init(void)
 {
-    // Set up device ID
     twr_device_id_get(device_id, sizeof(device_id));
     for (size_t i = 0; i < sizeof(device_id); i++)
     {
@@ -89,35 +87,29 @@ void application_init(void)
 
     // Initialize Button
     twr_button_init(&button, BUTTON_PIN, TWR_GPIO_PULL_DOWN, false);
-    // twr_button_set_event_handler(&button, button_event_handler, NULL); // Keep button handler commented if not used
+    // twr_button_set_event_handler(&button, button_event_handler, NULL);
 
-    // Initialize Buzzer Pin
-    twr_gpio_init(BUZZER_PIN);
-    twr_gpio_set_mode(BUZZER_PIN, TWR_GPIO_MODE_OUTPUT);
-    twr_gpio_set_output(BUZZER_PIN, 0); // Start with buzzer off
+    twr_gpio_init(BUZERANT_PIN);
+    twr_gpio_set_mode(BUZERANT_PIN, TWR_GPIO_MODE_OUTPUT);
+    twr_gpio_set_output(BUZERANT_PIN, 0); // Start with buzzer off
 
-    // Register scheduler tasks
-    buzzer_off_task_id = twr_scheduler_register(buzzer_off_task, NULL, TWR_SCHEDULER_IMMEDIATE_EXECUTION); // Task to turn buzzer off
-    next_beep_task_id = twr_scheduler_register(schedule_next_beep_task, NULL, BUZZER_BEEP_INTERVAL_MS); // Task to schedule beeps
+    buzzer_off_task_id = twr_scheduler_register(buzzer_off_task, NULL, TWR_TICK_INFINITY);
+    next_beep_task_id = twr_scheduler_register(schedule_next_beep_task, NULL, BUZERANT_INTERVAL_MS);
 
-    // Initialize CO2 Module
     twr_module_co2_init();
     twr_module_co2_set_update_interval(MEASUREMENT_INTERVAL_MS);
     twr_module_co2_set_event_handler(co2_event_handler, NULL);
 
-    // Initialize Battery Module
     twr_module_battery_init();
     twr_module_battery_set_update_interval(MEASUREMENT_INTERVAL_MS);
     twr_module_battery_set_event_handler(battery_event_handler, NULL);
 
-    // Initialize Radio
     twr_radio_init(TWR_RADIO_MODE_NODE_SLEEPING);
     twr_radio_pairing_request("co2-monitor", FW_VERSION);
 
     twr_log_info("Initialization complete.");
 }
 
-// Handler
 void co2_event_handler(twr_module_co2_event_t event, void *event_param)
 {
     (void)event_param;
@@ -137,9 +129,9 @@ void co2_event_handler(twr_module_co2_event_t event, void *event_param)
                 twr_led_set_mode(&onboard_led, TWR_LED_MODE_ON);
                 if (!dangerous_co2_level_active) {
                     dangerous_co2_level_active = true;
-                    twr_gpio_set_output(BUZZER_PIN, 1);
-                    twr_scheduler_plan_relative(buzzer_off_task_id, BUZZER_BEEP_DURATION_MS);
-                    twr_scheduler_plan_relative(next_beep_task_id, BUZZER_BEEP_INTERVAL_MS);
+                    twr_gpio_set_output(BUZERANT_PIN, 1);
+                    twr_scheduler_plan_relative(buzzer_off_task_id, BUZERANT_BEEP_DURATION_MS);
+                    twr_scheduler_plan_relative(next_beep_task_id, BUZERANT_INTERVAL_MS);
                 }
             }
             else if (co2_ppm >= CO2_THRESHOLD_VENTILATE)
@@ -148,20 +140,20 @@ void co2_event_handler(twr_module_co2_event_t event, void *event_param)
                 twr_led_set_mode(&onboard_led, TWR_LED_MODE_BLINK_FAST);
                 if (dangerous_co2_level_active) {
                     dangerous_co2_level_active = false;
-                    twr_gpio_set_output(BUZZER_PIN, 0); // Ensure buzzer is off
-                    twr_scheduler_plan_now(buzzer_off_task_id); // Cancel any pending off task
-                    twr_scheduler_plan_absolute(next_beep_task_id, TWR_NEVER); // Cancel next beep task
+                    twr_gpio_set_output(BUZERANT_PIN, 0);
+                    twr_scheduler_plan_now(buzzer_off_task_id);
+                    twr_scheduler_plan_absolute(next_beep_task_id, TWR_TICK_INFINITY);
                 }
             }
-            else // CO2 okay lvl
+            else
             {
                  twr_log_info("CO2 level acceptable.");
                 twr_led_set_mode(&onboard_led, TWR_LED_MODE_OFF);
                 if (dangerous_co2_level_active) {
                     dangerous_co2_level_active = false;
-                    twr_gpio_set_output(BUZZER_PIN, 0); // Ensure buzzer is off
-                    twr_scheduler_plan_now(buzzer_off_task_id); // Cancel any pending off task
-                    twr_scheduler_plan_absolute(next_beep_task_id, TWR_NEVER); // Cancel next beep task
+                    twr_gpio_set_output(BUZERANT_PIN, 0);
+                    twr_scheduler_plan_now(buzzer_off_task_id);
+                    twr_scheduler_plan_absolute(next_beep_task_id, TWR_TICK_INFINITY);
                 }
             }
 
@@ -200,9 +192,9 @@ void co2_event_handler(twr_module_co2_event_t event, void *event_param)
         twr_led_set_mode(&onboard_led, TWR_LED_MODE_BLINK_SLOW);
         if (dangerous_co2_level_active) {
             dangerous_co2_level_active = false;
-            twr_gpio_set_output(BUZZER_PIN, 0); // Ensure buzzer is off
-            twr_scheduler_plan_now(buzzer_off_task_id); // Cancel any pending off task
-            twr_scheduler_plan_absolute(next_beep_task_id, TWR_NEVER); // Cancel next beep task
+            twr_gpio_set_output(BUZERANT_PIN, 0);
+            twr_scheduler_plan_now(buzzer_off_task_id);
+            twr_scheduler_plan_absolute(next_beep_task_id, TWR_TICK_INFINITY);
         }
     }
 }
@@ -242,7 +234,7 @@ void battery_event_handler(twr_module_battery_event_t event, void *event_param)
 void buzzer_off_task(void *param)
 {
     (void)param;
-    twr_gpio_set_output(BUZZER_PIN, 0);
+    twr_gpio_set_output(BUZERANT_PIN, 0);
 }
 
 void schedule_next_beep_task(void *param)
@@ -250,9 +242,9 @@ void schedule_next_beep_task(void *param)
     (void)param;
     if (dangerous_co2_level_active)
     {
-        twr_gpio_set_output(BUZZER_PIN, 1);
-        twr_scheduler_plan_relative(buzzer_off_task_id, BUZZER_BEEP_DURATION_MS);
-        twr_scheduler_plan_current_relative(BUZZER_BEEP_INTERVAL_MS);
+        twr_gpio_set_output(BUZERANT_PIN, 1);
+        twr_scheduler_plan_relative(buzzer_off_task_id, BUZERANT_BEEP_DURATION_MS);
+        twr_scheduler_plan_current_relative(BUZERANT_INTERVAL_MS);
     }
 }
 
