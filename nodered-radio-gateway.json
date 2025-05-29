@@ -1,0 +1,245 @@
+[
+    {
+        "id": "radio-gateway-flow",
+        "type": "tab",
+        "label": "Radio Gateway - HARDWARIO",
+        "disabled": false,
+        "info": "Gateway for HARDWARIO Tower Kit CO2 sensor via radio"
+    },
+    {
+        "id": "radio-co2-in",
+        "type": "mqtt in",
+        "z": "radio-gateway-flow",
+        "name": "Radio CO2 Data",
+        "topic": "node/co2-monitor:0/co2-meter/-/concentration",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "mqtt-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "store-radio-co2"
+            ]
+        ]
+    },
+    {
+        "id": "radio-device-id-in",
+        "type": "mqtt in",
+        "z": "radio-gateway-flow",
+        "name": "Radio Device ID",
+        "topic": "node/co2-monitor:0/device-id",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "mqtt-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "store-radio-device-id"
+            ]
+        ]
+    },
+    {
+        "id": "radio-battery-in",
+        "type": "mqtt in",
+        "z": "radio-gateway-flow",
+        "name": "Radio Battery",
+        "topic": "node/co2-monitor:0/charge",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "mqtt-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "x": 150,
+        "y": 220,
+        "wires": [
+            [
+                "store-radio-battery"
+            ]
+        ]
+    },
+    {
+        "id": "store-radio-co2",
+        "type": "function",
+        "z": "radio-gateway-flow",
+        "name": "Store Radio CO2",
+        "func": "// Store CO2 reading from radio gateway\nconst co2Value = parseFloat(msg.payload);\nif (!isNaN(co2Value)) {\n    global.set('radioCO2', co2Value);\n    global.set('radioCO2Timestamp', new Date());\n    node.warn(`📡 Radio CO2: ${co2Value} ppm`);\n    \n    // Trigger data sending after CO2 reading\n    msg.trigger = 'radio-co2';\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 100,
+        "wires": [
+            [
+                "combine-radio-data"
+            ]
+        ]
+    },
+    {
+        "id": "store-radio-device-id",
+        "type": "function",
+        "z": "radio-gateway-flow",
+        "name": "Store Radio Device ID",
+        "func": "// Store device ID from radio gateway\nlet deviceId = msg.payload;\n\n// Handle different formats\nif (typeof deviceId === 'string') {\n    deviceId = deviceId.replace(/[\"/]/g, ''); // Remove quotes and slashes\n} else {\n    deviceId = deviceId.toString();\n}\n\nif (deviceId && deviceId.length > 0) {\n    global.set('radioDeviceId', deviceId);\n    node.warn(`📡 Radio Device ID: ${deviceId}`);\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "store-radio-battery",
+        "type": "function",
+        "z": "radio-gateway-flow",
+        "name": "Store Radio Battery",
+        "func": "// Store battery level from radio gateway\nconst batteryLevel = parseFloat(msg.payload);\nif (!isNaN(batteryLevel)) {\n    global.set('radioBattery', batteryLevel);\n    node.warn(`📡 Radio Battery: ${batteryLevel}%`);\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "combine-radio-data",
+        "type": "function",
+        "z": "radio-gateway-flow",
+        "name": "Combine Radio Data",
+        "func": "// Get all stored radio values\nconst co2Level = global.get('radioCO2');\nconst deviceId = global.get('radioDeviceId');\nconst batteryLevel = global.get('radioBattery') || 100;\nconst timestamp = global.get('radioCO2Timestamp') || new Date();\n\n// Only send if we have both CO2 and device ID\nif (co2Level !== undefined && deviceId) {\n    \n    // Create payload for backend\n    msg.payload = {\n        deviceId: deviceId,\n        co2_ppm: co2Level,\n        battery_percent: batteryLevel,\n        timestamp: timestamp.toISOString()\n    };\n    \n    // Set backend URL\n    msg.url = \"https://iotgrp2-ooor.onrender.com/api/readings/gateway\";\n    \n    node.warn(`📡 Sending radio data to backend: ${JSON.stringify(msg.payload)}`);\n    \n    return msg;\n} else {\n    node.warn(`📡 Missing radio data - CO2: ${co2Level}, DeviceID: ${deviceId}`);\n    return null;\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 140,
+        "wires": [
+            [
+                "debug-radio-formatted",
+                "send-radio-to-backend"
+            ]
+        ]
+    },
+    {
+        "id": "debug-radio-formatted",
+        "type": "debug",
+        "z": "radio-gateway-flow",
+        "name": "Debug Radio Data",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "send-radio-to-backend",
+        "type": "http request",
+        "z": "radio-gateway-flow",
+        "name": "Send Radio to Backend",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Content-Type",
+                "keyValue": "Content-Type",
+                "valueType": "other",
+                "valueValue": "application/json"
+            }
+        ],
+        "x": 800,
+        "y": 180,
+        "wires": [
+            [
+                "debug-radio-response",
+                "handle-radio-response"
+            ]
+        ]
+    },
+    {
+        "id": "debug-radio-response",
+        "type": "debug",
+        "z": "radio-gateway-flow",
+        "name": "Debug Radio Response",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1040,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "handle-radio-response",
+        "type": "function",
+        "z": "radio-gateway-flow",
+        "name": "Handle Radio Response",
+        "func": "// Check if the API call was successful\nconst statusCode = msg.statusCode;\n\nif (statusCode >= 200 && statusCode < 300) {\n    // Success\n    node.status({fill:\"green\", shape:\"dot\", text:\"Radio Success\"});\n    node.warn(`✅ Radio data sent successfully! CO2: ${global.get('radioCO2')} ppm`);\n} else {\n    // Error\n    node.status({fill:\"red\", shape:\"ring\", text:\"Radio Error: \" + statusCode});\n    node.error(`❌ Failed to send radio data: ${statusCode} - ${JSON.stringify(msg.payload)}`);\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "mqtt-broker",
+        "type": "mqtt-broker",
+        "name": "MQTT Broker",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    }
+]
