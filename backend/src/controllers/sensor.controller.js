@@ -62,3 +62,23 @@ export const updateBatteryLevel = async (req, res) => {
     res.status(500).json({ message: 'Server error while updating battery level' });
   }
 };
+export const updateSensorName = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    const sensor = await Sensor.findById(id);
+    if (!sensor) {
+      return res.status(404).json({ message: 'Sensor not found' });
+    }
+
+    sensor.name = name;
+    await sensor.save();
+
+    res.json({ message: 'Sensor name updated' });
+  } catch (error) {
+    console.error('Error updating sensor name:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+

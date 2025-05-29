@@ -116,35 +116,42 @@ function BuildingDetail() {
     }
   };
 
-  const handleNameChange = async (deviceId, newName) => {
-    if (!token) {
-      alert('Authentication error.');
-      return;
-    }
-    const originalDevice = devices.find(d => d.id === deviceId);
-    if (!originalDevice) return;
-    const originalName = originalDevice.name;
-    setError(null);
+const handleNameChange = async (sensorId, newName) => {
+  console.log("🧪 ID posielané na PATCH:", sensorId);
+  if (!token) {
+    alert('Authentication error.');
+    return;
+  }
 
+  const originalSensor = devices.find(d => d.id === sensorId);
+  if (!originalSensor) return;
+
+  const originalName = originalSensor.name;
+  setError(null);
+
+  // Optimistický update UI
+  setDevices(prevDevices =>
+    prevDevices.map(d =>
+      d.id === sensorId ? { ...d, name: newName } : d
+    )
+  );
+
+  try {
+    await apiClient(`/sensors/${sensorId}`, 'PATCH', { name: newName }, token);
+    console.log(`✅ Updated sensor name for ${sensorId} to "${newName}"`);
+  } catch (err) {
+    console.error("❌ Failed to update sensor name:", err);
+    setError(err.message || 'Failed to update sensor name');
+
+    // Obnovenie pôvodného mena ak PATCH zlyhá
     setDevices(prevDevices =>
-      prevDevices.map(device =>
-        device.id === deviceId ? { ...device, name: newName } : device
+      prevDevices.map(d =>
+        d.id === sensorId ? { ...d, name: originalName } : d
       )
     );
+  }
+};
 
-    try {
-      await apiClient(`/devices/${deviceId}`, 'PATCH', { name: newName }, token);
-      console.log(`Updated name for ${deviceId} to ${newName} via API`);
-    } catch (err) {
-      console.error("Failed to update device name:", err);
-      setError(err.message || 'Failed to update device name');
-      setDevices(prevDevices =>
-        prevDevices.map(device =>
-          device.id === deviceId ? { ...device, name: originalName } : device
-        )
-      );
-    }
-  };
 
   if (isLoading) {
     return (
@@ -260,7 +267,7 @@ function BuildingDetail() {
                   batteryLevel={device.batteryLevel ?? 0}
                   onNameChange={handleNameChange}
                 />
-                <div className="h-[350px]">
+                <div>
                   {device.readings && device.readings.length > 0 ? (
                     <CO2Graph data={device.readings} />
                   ) : (
