@@ -1,0 +1,289 @@
+[
+    {
+        "id": "gateway-flow",
+        "type": "tab",
+        "label": "CO2 Sensor Gateway - Fixed",
+        "disabled": false,
+        "info": "Gateway for CO2 sensor to backend API - handles device data format"
+    },
+    {
+        "id": "mqtt-co2-in",
+        "type": "mqtt in",
+        "z": "gateway-flow",
+        "name": "CO2 Readings",
+        "topic": "node/co2-monitor:0/co2-meter/-/concentration",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "mqtt-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "store-co2"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-device-id-in",
+        "type": "mqtt in",
+        "z": "gateway-flow",
+        "name": "Device ID",
+        "topic": "node/co2-monitor:0/device-id",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "mqtt-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "store-device-id"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-battery-in",
+        "type": "mqtt in",
+        "z": "gateway-flow",
+        "name": "Battery Level",
+        "topic": "node/co2-monitor:0/charge",
+        "qos": "1",
+        "datatype": "auto",
+        "broker": "mqtt-broker",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "x": 150,
+        "y": 220,
+        "wires": [
+            [
+                "store-battery"
+            ]
+        ]
+    },
+    {
+        "id": "store-co2",
+        "type": "function",
+        "z": "gateway-flow",
+        "name": "Store CO2 Data",
+        "func": "// Store CO2 reading in global context\nconst co2Value = parseFloat(msg.payload);\nif (!isNaN(co2Value)) {\n    global.set('lastCO2', co2Value);\n    global.set('lastCO2Timestamp', new Date());\n    node.warn(`Stored CO2: ${co2Value} ppm`);\n    \n    // Trigger data sending after CO2 reading\n    msg.trigger = 'co2';\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 100,
+        "wires": [
+            [
+                "combine-and-send"
+            ]
+        ]
+    },
+    {
+        "id": "store-device-id",
+        "type": "function",
+        "z": "gateway-flow",
+        "name": "Store Device ID",
+        "func": "// Store device ID in global context\nconst deviceId = msg.payload.toString().replace(/\"/g, ''); // Remove quotes\nif (deviceId && deviceId.length > 0) {\n    global.set('lastDeviceId', deviceId);\n    node.warn(`Stored Device ID: ${deviceId}`);\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "store-battery",
+        "type": "function",
+        "z": "gateway-flow",
+        "name": "Store Battery Data",
+        "func": "// Store battery level in global context\nconst batteryLevel = parseFloat(msg.payload);\nif (!isNaN(batteryLevel)) {\n    global.set('lastBattery', batteryLevel);\n    node.warn(`Stored Battery: ${batteryLevel}%`);\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "combine-and-send",
+        "type": "function",
+        "z": "gateway-flow",
+        "name": "Combine Data & Send",
+        "func": "// Get all stored values\nconst co2Level = global.get('lastCO2');\nconst deviceId = global.get('lastDeviceId');\nconst batteryLevel = global.get('lastBattery') || 100;\nconst timestamp = global.get('lastCO2Timestamp') || new Date();\n\n// Only send if we have both CO2 and device ID\nif (co2Level !== undefined && deviceId) {\n    \n    // Create payload matching backend expectation\n    msg.payload = {\n        deviceId: deviceId,\n        co2_ppm: co2Level,\n        battery_percent: batteryLevel,\n        timestamp: timestamp.toISOString()\n    };\n    \n    // Set backend URL\n    msg.url = \"https://iotgrp2-ooor.onrender.com/api/readings/gateway\";\n    \n    node.warn(\"Sending to backend: \" + JSON.stringify(msg.payload));\n    node.warn(\"Backend URL: \" + msg.url);\n    \n    return msg;\n} else {\n    node.warn(`Missing data - CO2: ${co2Level}, DeviceID: ${deviceId}`);\n    return null;\n}",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 140,
+        "wires": [
+            [
+                "debug-formatted",
+                "send-to-backend"
+            ]
+        ]
+    },
+    {
+        "id": "debug-formatted",
+        "type": "debug",
+        "z": "gateway-flow",
+        "name": "Debug Formatted Data",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 800,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "send-to-backend",
+        "type": "http request",
+        "z": "gateway-flow",
+        "name": "Send to Backend API",
+        "method": "POST",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [
+            {
+                "keyType": "Content-Type",
+                "keyValue": "Content-Type",
+                "valueType": "other",
+                "valueValue": "application/json"
+            }
+        ],
+        "x": 800,
+        "y": 180,
+        "wires": [
+            [
+                "debug-response",
+                "handle-response"
+            ]
+        ]
+    },
+    {
+        "id": "debug-response",
+        "type": "debug",
+        "z": "gateway-flow",
+        "name": "Debug API Response",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1040,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "handle-response",
+        "type": "function",
+        "z": "gateway-flow",
+        "name": "Handle API Response",
+        "func": "// Check if the API call was successful\nconst statusCode = msg.statusCode;\n\nif (statusCode >= 200 && statusCode < 300) {\n    // Success\n    node.status({fill:\"green\", shape:\"dot\", text:\"Success\"});\n    node.warn(\"✅ Data successfully sent to backend\");\n} else {\n    // Error\n    node.status({fill:\"red\", shape:\"ring\", text:\"Error: \" + statusCode});\n    node.error(`❌ Failed to send data: ${statusCode} - ${JSON.stringify(msg.payload)}`);\n}\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "test-inject",
+        "type": "inject",
+        "z": "gateway-flow",
+        "name": "Test Data Injection",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"deviceId\":\"303947013139353611000000\",\"co2_ppm\":750,\"battery_percent\":85}",
+        "payloadType": "json",
+        "x": 160,
+        "y": 300,
+        "wires": [
+            [
+                "manual-send"
+            ]
+        ]
+    },
+    {
+        "id": "manual-send",
+        "type": "function",
+        "z": "gateway-flow",
+        "name": "Manual Test Send",
+        "func": "// Manual test with your exact device ID\nmsg.payload = {\n    deviceId: \"303947013139353611000000\",\n    co2_ppm: 750,\n    battery_percent: 85,\n    timestamp: new Date().toISOString()\n};\n\nmsg.url = \"https://iotgrp2-ooor.onrender.com/api/readings/gateway\";\n\nnode.warn(\"Manual test - Sending: \" + JSON.stringify(msg.payload));\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 300,
+        "wires": [
+            [
+                "send-to-backend"
+            ]
+        ]
+    },
+    {
+        "id": "mqtt-broker",
+        "type": "mqtt-broker",
+        "name": "MQTT Broker",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "sessionExpiry": ""
+    }
+]
