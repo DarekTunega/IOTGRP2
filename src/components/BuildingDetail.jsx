@@ -318,16 +318,6 @@ function BuildingDetail() {
                   onNameChange={handleNameChange}
                 />
 
-                {/* Device Actions */}
-                <div className="flex justify-end pt-2 border-t border-gray-100">
-                  <button
-                    onClick={() => handleRemoveDevice(device.id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                  >
-                    Remove Device from Building
-                  </button>
-                </div>
-
                 {/* Recent Alerts Section */}
                 {device.readings && device.readings.length > 0 && (
                   <Card className="p-4">
@@ -377,6 +367,16 @@ function BuildingDetail() {
                       No reading data available for graph.
                     </div>
                   )}
+                </div>
+
+                {/* Device Actions */}
+                <div className="flex justify-center pt-6 border-t border-gray-200">
+                  <button
+                    onClick={() => handleRemoveDevice(device.id)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                  >
+                    Remove Device from Building
+                  </button>
                 </div>
               </Card>
               );
