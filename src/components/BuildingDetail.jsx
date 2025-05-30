@@ -261,6 +261,48 @@ function BuildingDetail() {
                   lastUpdateTime={device.readings?.[0]?.timestamp}
                   onNameChange={handleNameChange}
                 />
+
+                {/* Recent Alerts Section */}
+                {device.readings && device.readings.length > 0 && (
+                  <Card className="p-4">
+                    <h4 className="text-lg font-medium mb-3 flex items-center">
+                      <span className="mr-2">🚨</span>
+                      Recent Alerts
+                    </h4>
+                    <div className="space-y-2">
+                      {(() => {
+                        const alerts = generateAlerts(device.readings);
+                        return alerts.length > 0 ? (
+                          alerts.map((alert, alertIndex) => (
+                            <div
+                              key={alert.id || alertIndex}
+                              className={`p-3 rounded-lg border-l-4 ${alert.bgColor} ${alert.borderColor}`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className={`font-medium ${alert.color}`}>
+                                    {alert.level}: {alert.co2Level} ppm
+                                  </p>
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    {alert.message}
+                                  </p>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(alert.timestamp).toLocaleTimeString()}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">
+                            No recent alerts - Air quality is acceptable
+                          </p>
+                        );
+                      })()}
+                    </div>
+                  </Card>
+                )}
+
                 <div className="h-[350px]">
                   {device.readings && device.readings.length > 0 ? (
                     <CO2Graph data={device.readings} />
