@@ -34,7 +34,7 @@ function CO2Graph({ data }) {
 
     sortedData.forEach((item, index) => {
       const x = (index / (sortedData.length - 1)) * width;
-      const y = height - ((item.co2Level - minValue) / range) * (height - 60) - 10; // More padding for labels
+      const y = height - ((item.co2Level - minValue) / range) * (height - 40) - 20; // Leave space for labels
 
       if (index === 0) {
         ctx.moveTo(x, y);
@@ -47,7 +47,7 @@ function CO2Graph({ data }) {
 
     // Draw threshold lines
     const drawThreshold = (value, color, label) => {
-      const y = height - ((value - minValue) / range) * (height - 60) - 10;
+      const y = height - ((value - minValue) / range) * (height - 40) - 20;
       ctx.beginPath();
       ctx.setLineDash([5, 5]);
       ctx.strokeStyle = color;
@@ -60,40 +60,43 @@ function CO2Graph({ data }) {
       // Label
       ctx.fillStyle = color;
       ctx.font = '12px sans-serif';
-      ctx.fillText(`${value} ppm - ${label}`, 10, y - 5);
+      ctx.fillText(`${value} ppm`, 10, y - 5);
     };
 
     // Draw threshold lines for different CO2 levels
-    drawThreshold(800, '#22c55e', 'Medium threshold'); // Green
-    drawThreshold(1200, '#ef4444', 'Dangerous threshold'); // Red
-
-    // Draw time axis labels
-    ctx.fillStyle = '#6b7280';
-    ctx.font = '10px sans-serif';
-
-    // Show time labels at key points
-    const labelCount = Math.min(6, sortedData.length); // Max 6 labels
-    for (let i = 0; i < labelCount; i++) {
-      const dataIndex = Math.floor((i / (labelCount - 1)) * (sortedData.length - 1));
-      const x = (dataIndex / (sortedData.length - 1)) * width;
-      const timestamp = new Date(sortedData[dataIndex].timestamp);
-
-      const timeLabel = timestamp.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-
-      // Rotate text for better readability
-      ctx.save();
-      ctx.translate(x, height - 5);
-      ctx.rotate(-Math.PI / 4); // 45 degree rotation
-      ctx.fillText(timeLabel, -20, 0);
-      ctx.restore();
-    }
+    drawThreshold(800, '#22c55e', 'Medium'); // Green
+    drawThreshold(1200, '#ef4444', 'Dangerous'); // Red
 
   }, [data]);
+
+  // Format time range for display
+  const getTimeRange = () => {
+    if (!data || data.length === 0) return { from: '', to: '', duration: '' };
+
+    const timestamps = data.map(d => new Date(d.timestamp));
+    const earliest = new Date(Math.min(...timestamps));
+    const latest = new Date(Math.max(...timestamps));
+
+    const diffHours = Math.round((latest - earliest) / (1000 * 60 * 60));
+    const diffDays = Math.round(diffHours / 24);
+
+    let duration = '';
+    if (diffDays > 1) {
+      duration = `${diffDays} days`;
+    } else if (diffHours > 1) {
+      duration = `${diffHours} hours`;
+    } else {
+      duration = 'Last hour';
+    }
+
+    return {
+      from: earliest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      to: latest.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+      duration
+    };
+  };
+
+  const timeRange = getTimeRange();
 
   return (
     <Card title={`CO2 Levels Over Time (${data?.length || 0} readings)`} className="mb-6">
@@ -105,13 +108,25 @@ function CO2Graph({ data }) {
           className="w-full h-full"
         ></canvas>
       </div>
-      <div className="mt-2 text-xs text-gray-500 text-center">
-        {data && data.length > 0 && (
-          <div className="flex justify-between">
-            <span>📅 From: {new Date(Math.min(...data.map(d => new Date(d.timestamp)))).toLocaleString()}</span>
-            <span>📅 To: {new Date(Math.max(...data.map(d => new Date(d.timestamp)))).toLocaleString()}</span>
+      <div className="mt-3 px-2">
+        <div className="flex justify-between items-center text-sm text-gray-600">
+          <div className="flex items-center space-x-4">
+            <span className="flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+              800 ppm - Medium threshold
+            </span>
+            <span className="flex items-center">
+              <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+              1200 ppm - Dangerous threshold
+            </span>
           </div>
-        )}
+          <div className="text-right">
+            <div className="font-medium text-gray-800">{timeRange.duration}</div>
+            <div className="text-xs text-gray-500">
+              {timeRange.from} → {timeRange.to}
+            </div>
+          </div>
+        </div>
       </div>
     </Card>
   );
