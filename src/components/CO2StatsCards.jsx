@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Card from './Card';
 
-function CO2StatsCards({ currentLevel, dailyAverage, peakValue, deviceName, deviceId, batteryLevel, onNameChange }) {
+function CO2StatsCards({ currentLevel, dailyAverage, peakValue, deviceName, deviceId, batteryLevel, lastUpdateTime, onNameChange }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(deviceName);
 
@@ -119,13 +119,18 @@ function CO2StatsCards({ currentLevel, dailyAverage, peakValue, deviceName, devi
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Current CO2 Level */}
-        <Card className={`${currentInfo.bgColor} border-l-4 ${currentInfo.borderColor}`}>
+        <Card className={`${currentInfo.bgColor} border-l-4 ${currentInfo.borderColor} relative`}>
           <h3 className="text-lg font-medium text-gray-700">Current CO2 Level</h3>
           <div className="flex items-baseline mt-2">
             <p className={`text-3xl font-bold ${currentInfo.color}`}>{currentLevel}</p>
             <p className="ml-1 text-gray-500">ppm</p>
           </div>
           <p className={`mt-1 ${currentInfo.color} font-medium`}>{currentInfo.level} level</p>
+          {lastUpdateTime && (
+            <p className="absolute bottom-2 left-4 text-xs text-gray-500">
+              Last update: {new Date(lastUpdateTime).toLocaleTimeString()}
+            </p>
+          )}
         </Card>
 
         {/* Daily Average */}

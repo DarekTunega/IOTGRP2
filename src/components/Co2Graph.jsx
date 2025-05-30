@@ -79,18 +79,6 @@ function CO2Graph({ data }) {
           className="w-full h-full"
         ></canvas>
       </div>
-      <div className="flex justify-between text-sm text-gray-500 mt-2">
-        {data.length > 0 && (
-          <>
-            <div>
-              {new Date(data[0].timestamp).toLocaleTimeString()}
-            </div>
-            <div>
-              {new Date(data[data.length - 1].timestamp).toLocaleTimeString()}
-            </div>
-          </>
-        )}
-      </div>
     </Card>
   );
 }

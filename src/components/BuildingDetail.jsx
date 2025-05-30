@@ -258,6 +258,7 @@ function BuildingDetail() {
                   deviceName={device.name}
                   deviceId={device.id}
                   batteryLevel={device.batteryLevel ?? 0}
+                  lastUpdateTime={device.readings?.[0]?.timestamp}
                   onNameChange={handleNameChange}
                 />
                 <div className="h-[350px]">
