@@ -33,6 +33,62 @@ function BuildingDetail() {
       ? Math.max(...readings.map(r => r.co2Level))
       : 0;
 
+  // Generate alerts based on CO2 levels
+  const generateAlerts = (readings) => {
+    if (!readings || readings.length === 0) return [];
+
+    const alerts = [];
+    const recentReadings = readings.slice(0, 10); // Check last 10 readings
+
+    recentReadings.forEach(reading => {
+      const co2Level = reading.co2Level;
+      let alertData = null;
+
+      if (co2Level >= 1200) {
+        alertData = {
+          level: 'Dangerous',
+          message: 'Ventilate immediately - Dangerous CO2 levels!',
+          color: 'text-red-600',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          severity: 'critical'
+        };
+      } else if (co2Level >= 800) {
+        alertData = {
+          level: 'Medium',
+          message: 'Try to ventilate - Elevated CO2 levels',
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200',
+          severity: 'warning'
+        };
+      }
+
+      if (alertData) {
+        alerts.push({
+          ...alertData,
+          co2Level: co2Level,
+          timestamp: reading.timestamp,
+          id: `${reading.timestamp}-${co2Level}` // Unique identifier
+        });
+      }
+    });
+
+    // Remove duplicate consecutive alerts and limit to last 3
+    const uniqueAlerts = [];
+    let lastAlert = null;
+
+    for (const alert of alerts) {
+      if (!lastAlert || lastAlert.severity !== alert.severity ||
+          Math.abs(new Date(alert.timestamp) - new Date(lastAlert.timestamp)) > 30 * 60 * 1000) { // 30 minutes apart
+        uniqueAlerts.push(alert);
+        lastAlert = alert;
+      }
+    }
+
+    return uniqueAlerts.slice(0, 3); // Return only last 3 alerts
+  };
+
   useEffect(() => {
     if (!token || !buildingId) {
       setIsLoading(false);
