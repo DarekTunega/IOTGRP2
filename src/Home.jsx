@@ -6,10 +6,69 @@ import { useAuth } from './context/AuthContext';
 
 function Home() {
   const { isLoggedIn, token } = useAuth();
-  const [notifications, setNotifications] = useState([]);
+  const [allAlerts, setAllAlerts] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [stats, setStats] = useState({ total: 0, critical: 0, warning: 0, buildings: 0, devices: 0 });
+
+  // Generate alerts based on CO2 levels (same logic as BuildingDetail)
+  const generateAlerts = (readings, deviceName, buildingName) => {
+    if (!readings || readings.length === 0) return [];
+
+    const alerts = [];
+    const recentReadings = readings.slice(0, 10); // Check last 10 readings
+
+    recentReadings.forEach(reading => {
+      const co2Level = reading.co2Level;
+      let alertData = null;
+
+      if (co2Level >= 1200) {
+        alertData = {
+          level: 'Dangerous',
+          message: 'Ventilate immediately - Dangerous CO2 levels!',
+          color: 'text-red-600',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          severity: 'critical'
+        };
+      } else if (co2Level >= 800) {
+        alertData = {
+          level: 'Medium',
+          message: 'Try to ventilate - Elevated CO2 levels',
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200',
+          severity: 'warning'
+        };
+      }
+
+      if (alertData) {
+        alerts.push({
+          ...alertData,
+          co2Level: co2Level,
+          timestamp: reading.timestamp,
+          deviceName,
+          buildingName,
+          id: `${reading.timestamp}-${co2Level}-${deviceName}` // Unique identifier
+        });
+      }
+    });
+
+    // Remove duplicate consecutive alerts and limit to recent ones
+    const uniqueAlerts = [];
+    let lastAlert = null;
+
+    for (const alert of alerts) {
+      if (!lastAlert || lastAlert.severity !== alert.severity ||
+          Math.abs(new Date(alert.timestamp) - new Date(lastAlert.timestamp)) > 15 * 60 * 1000) { // 15 minutes apart
+        uniqueAlerts.push(alert);
+        lastAlert = alert;
+      }
+    }
+
+    return uniqueAlerts.slice(0, 5); // Return only last 5 alerts per device
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -20,12 +79,44 @@ function Home() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch notifications
-        const notifData = await apiClient('/notifications', 'GET', null, token);
-        setNotifications(notifData);
-        // Fetch buildings (with devices)
+        // Fetch all buildings with their devices
         const buildingsData = await apiClient('/buildings', 'GET', null, token);
         setBuildings(buildingsData);
+
+        // Generate alerts from all devices
+        const allAlertsFromDevices = [];
+        let totalDevices = 0;
+        let criticalCount = 0;
+        let warningCount = 0;
+
+        buildingsData.forEach(building => {
+          if (building.devices && building.devices.length > 0) {
+            building.devices.forEach(device => {
+              totalDevices++;
+              const deviceAlerts = generateAlerts(device.readings, device.name, building.name);
+              allAlertsFromDevices.push(...deviceAlerts);
+
+              // Count alert types
+              deviceAlerts.forEach(alert => {
+                if (alert.severity === 'critical') criticalCount++;
+                if (alert.severity === 'warning') warningCount++;
+              });
+            });
+          }
+        });
+
+        // Sort alerts by timestamp (newest first)
+        allAlertsFromDevices.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        setAllAlerts(allAlertsFromDevices);
+        setStats({
+          total: allAlertsFromDevices.length,
+          critical: criticalCount,
+          warning: warningCount,
+          buildings: buildingsData.length,
+          devices: totalDevices
+        });
+
       } catch (err) {
         setError(err.message || 'Failed to load data');
       } finally {
@@ -55,34 +146,94 @@ function Home() {
       <div className="ml-64 flex-1">
         <header className="bg-white shadow">
           <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-3xl font-bold text-gray-900">Recent Notifications</h1>
+            <h1 className="text-3xl font-bold text-gray-900">🚨 All Alerts Dashboard</h1>
+            <p className="text-gray-600 mt-2">Centralized view of all CO2 alerts across your buildings</p>
           </div>
         </header>
         <main>
           <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             {loading ? (
-              <div className="text-center py-8 text-lg text-gray-500">Loading...</div>
+              <div className="text-center py-8 text-lg text-gray-500">Loading alerts...</div>
             ) : error ? (
               <div className="text-center py-8 text-red-600">{error}</div>
-            ) : notifications.length === 0 ? (
-              <Card>No notifications found.</Card>
             ) : (
               <div className="space-y-6">
-                {notifications.map((notif, idx) => (
-                  <Card key={notif._id || idx}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium text-gray-800">{notif.message}</p>
-                        <p className="text-xs text-gray-500">{new Date(notif.createdAt).toLocaleString()}</p>
-                      </div>
-                      {notif.read ? (
-                        <span className="text-green-500 text-xs font-semibold">Read</span>
-                      ) : (
-                        <span className="text-yellow-500 text-xs font-semibold">Unread</span>
-                      )}
+                {/* Stats Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  <Card className="bg-blue-50 border-l-4 border-blue-500">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-600">{stats.total}</p>
+                      <p className="text-sm text-gray-600">Total Alerts</p>
                     </div>
                   </Card>
-                ))}
+                  <Card className="bg-red-50 border-l-4 border-red-500">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-red-600">{stats.critical}</p>
+                      <p className="text-sm text-gray-600">Critical</p>
+                    </div>
+                  </Card>
+                  <Card className="bg-yellow-50 border-l-4 border-yellow-500">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-yellow-600">{stats.warning}</p>
+                      <p className="text-sm text-gray-600">Warnings</p>
+                    </div>
+                  </Card>
+                  <Card className="bg-green-50 border-l-4 border-green-500">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-600">{stats.buildings}</p>
+                      <p className="text-sm text-gray-600">Buildings</p>
+                    </div>
+                  </Card>
+                  <Card className="bg-purple-50 border-l-4 border-purple-500">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-purple-600">{stats.devices}</p>
+                      <p className="text-sm text-gray-600">Devices</p>
+                    </div>
+                  </Card>
+                </div>
+
+                {/* Alerts List */}
+                {allAlerts.length === 0 ? (
+                  <Card className="text-center py-8">
+                    <div className="text-6xl mb-4">✅</div>
+                    <h3 className="text-xl font-medium text-gray-800 mb-2">All Clear!</h3>
+                    <p className="text-gray-600">No CO2 alerts detected across all your devices.</p>
+                    <p className="text-sm text-gray-500 mt-2">Air quality is acceptable in all monitored areas.</p>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-semibold text-gray-800 flex items-center">
+                      <span className="mr-2">📋</span>
+                      Recent Alerts ({allAlerts.length})
+                    </h2>
+                    {allAlerts.map((alert, index) => (
+                      <Card key={alert.id || index} className={`${alert.bgColor} border-l-4 ${alert.borderColor}`}>
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`font-bold ${alert.color}`}>
+                                {alert.severity === 'critical' ? '🚨' : '⚠️'} {alert.level}
+                              </span>
+                              <span className="text-lg font-bold text-gray-800">{alert.co2Level} ppm</span>
+                            </div>
+                            <p className="text-sm text-gray-700 mb-2">{alert.message}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span>📍 <strong>{alert.buildingName}</strong> → {alert.deviceName}</span>
+                              <span>🕐 {new Date(alert.timestamp).toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            alert.severity === 'critical'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {alert.severity.toUpperCase()}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
