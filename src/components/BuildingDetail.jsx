@@ -370,7 +370,7 @@ function BuildingDetail() {
                 </div>
 
                 {/* Device Actions */}
-                <div className="flex justify-center pt-6 border-t border-gray-200">
+                <div className="flex justify-center pt-16 border-t border-gray-200">
                   <button
                     onClick={() => handleRemoveDevice(device.id)}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
