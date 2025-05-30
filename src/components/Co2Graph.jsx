@@ -81,7 +81,7 @@ function CO2Graph({ data }) {
   }, [data]);
 
   return (
-    <Card title={`CO2 Levels Over Past 2 Days (${data?.length || 0} readings)`} className="mb-6">
+    <Card title="CO2 Levels Over Past 2 Days" className="mb-6">
       <div className="w-full h-80">
         <canvas
           ref={canvasRef}
