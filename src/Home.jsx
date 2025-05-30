@@ -50,6 +50,7 @@ function Home() {
           deviceName,
           buildingName,
           id: `${reading.timestamp}-${co2Level}-${deviceName}`
+        });
       }
     });
 
