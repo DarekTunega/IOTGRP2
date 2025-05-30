@@ -79,9 +79,24 @@ function Home() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch all buildings with their devices
-        const buildingsData = await apiClient('/buildings', 'GET', null, token);
-        setBuildings(buildingsData);
+        // First fetch all buildings (basic info)
+        const buildingsListData = await apiClient('/buildings', 'GET', null, token);
+
+        // Then fetch each building individually to get detailed device data with readings
+        const buildingsWithDetails = await Promise.all(
+          buildingsListData.map(async (building) => {
+            try {
+              const detailedBuilding = await apiClient(`/buildings/${building._id}`, 'GET', null, token);
+              return detailedBuilding;
+            } catch (err) {
+              console.error(`Failed to fetch details for building ${building._id}:`, err);
+              return { ...building, devices: [] }; // Fallback with empty devices
+            }
+          })
+        );
+
+        setBuildings(buildingsWithDetails);
+        console.log("🏠 All Buildings with Details:", buildingsWithDetails);
 
         // Generate alerts from all devices
         const allAlertsFromDevices = [];
@@ -89,11 +104,14 @@ function Home() {
         let criticalCount = 0;
         let warningCount = 0;
 
-        buildingsData.forEach(building => {
+        buildingsWithDetails.forEach(building => {
+          console.log(`🏢 Processing building: ${building.name}`, building.devices?.length || 0, 'devices');
           if (building.devices && building.devices.length > 0) {
             building.devices.forEach(device => {
+              console.log(`📱 Processing device: ${device.name}`, device.readings?.length || 0, 'readings');
               totalDevices++;
               const deviceAlerts = generateAlerts(device.readings, device.name, building.name);
+              console.log(`🚨 Generated ${deviceAlerts.length} alerts for ${device.name}`);
               allAlertsFromDevices.push(...deviceAlerts);
 
               // Count alert types
@@ -105,6 +123,8 @@ function Home() {
           }
         });
 
+        console.log(`📊 Total alerts generated: ${allAlertsFromDevices.length}`);
+
         // Sort alerts by timestamp (newest first)
         allAlertsFromDevices.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
@@ -113,7 +133,7 @@ function Home() {
           total: allAlertsFromDevices.length,
           critical: criticalCount,
           warning: warningCount,
-          buildings: buildingsData.length,
+          buildings: buildingsWithDetails.length,
           devices: totalDevices
         });
 
