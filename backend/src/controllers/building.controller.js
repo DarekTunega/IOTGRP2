@@ -35,9 +35,14 @@ export const getBuildingById = async (req, res) => {
 
     const devicesWithReadings = await Promise.all(
       building.devices.map(async (device) => {
-        const readings = await CO2Reading.find({ device: device._id })
-          .sort({ timestamp: -1 })
-          .limit(672);
+        // Get readings from the past 2 days
+        const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+        const readings = await CO2Reading.find({
+          device: device._id,
+          timestamp: { $gte: twoDaysAgo }
+        })
+          .sort({ timestamp: -1 });
         return {
           ...device.toObject(),
           readings

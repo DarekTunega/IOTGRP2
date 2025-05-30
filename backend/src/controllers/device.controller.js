@@ -20,9 +20,14 @@ export const getDeviceById = async (req, res) => {
       return res.status(404).json({ message: 'Device not found' });
     }
 
-    const readings = await CO2Reading.find({ device: device._id })
-      .sort({ timestamp: -1 })
-      .limit(50);
+    // Get readings from the past 2 days
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+    const readings = await CO2Reading.find({
+      device: device._id,
+      timestamp: { $gte: twoDaysAgo }
+    })
+      .sort({ timestamp: -1 });
 
     res.status(200).json({
       ...device.toObject(),
