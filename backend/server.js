@@ -4,13 +4,14 @@ import cors from 'cors';
 import connectDB from './src/config/db.js';
 import authRoutes from './src/routes/auth.routes.js';
 import buildingRoutes from './src/routes/building.routes.js';
+import deviceRoutes from './src/routes/device.routes.js';
 import sensorRoutes from './src/routes/sensor.routes.js';
 import readingRoutes from './src/routes/reading.routes.js';
 import notificationRoutes from './src/routes/notification.routes.js';
 
 import './src/models/user.model.js';
 import './src/models/building.model.js';
-import './src/models/device.model.js'; 
+import './src/models/device.model.js';
 import './src/models/sensor.model.js';
 // import './src/models/reading.model.js';
 // import './src/models/notification.model.js';
@@ -33,6 +34,7 @@ connectDB();
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/buildings', buildingRoutes);
+app.use('/api/devices', deviceRoutes);
 app.use('/api/sensors', sensorRoutes);
 app.use('/api/readings', readingRoutes);
 app.use('/api/notifications', notificationRoutes);

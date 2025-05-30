@@ -8,7 +8,7 @@ import User from '../models/user.model.js';
 dotenv.config();
 
 // Set the device ID you want to use
-//const DEVICE_ID = '303947013139353611000000';
+const DEVICE_ID = '303947013139353611000000';
 
 // Connect to MongoDB
 const connectDB = async () => {
