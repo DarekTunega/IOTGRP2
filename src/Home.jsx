@@ -12,12 +12,11 @@ function Home() {
   const [error, setError] = useState(null);
   const [stats, setStats] = useState({ total: 0, critical: 0, warning: 0, buildings: 0, devices: 0 });
 
-  // Generate alerts based on CO2 levels (same logic as BuildingDetail)
   const generateAlerts = (readings, deviceName, buildingName) => {
     if (!readings || readings.length === 0) return [];
 
     const alerts = [];
-    const recentReadings = readings.slice(0, 10); // Check last 10 readings
+    const recentReadings = readings.slice(0, 10);
 
     recentReadings.forEach(reading => {
       const co2Level = reading.co2Level;
@@ -50,24 +49,22 @@ function Home() {
           timestamp: reading.timestamp,
           deviceName,
           buildingName,
-          id: `${reading.timestamp}-${co2Level}-${deviceName}` // Unique identifier
-        });
+          id: `${reading.timestamp}-${co2Level}-${deviceName}`
       }
     });
 
-    // Remove duplicate consecutive alerts and limit to recent ones
     const uniqueAlerts = [];
     let lastAlert = null;
 
     for (const alert of alerts) {
       if (!lastAlert || lastAlert.severity !== alert.severity ||
-          Math.abs(new Date(alert.timestamp) - new Date(lastAlert.timestamp)) > 15 * 60 * 1000) { // 15 minutes apart
+          Math.abs(new Date(alert.timestamp) - new Date(lastAlert.timestamp)) > 15 * 60 * 1000) {
         uniqueAlerts.push(alert);
         lastAlert = alert;
       }
     }
 
-    return uniqueAlerts.slice(0, 5); // Return only last 5 alerts per device
+    return uniqueAlerts.slice(0, 5);
   };
 
   useEffect(() => {
@@ -79,10 +76,8 @@ function Home() {
       setLoading(true);
       setError(null);
       try {
-        // First fetch all buildings (basic info)
         const buildingsListData = await apiClient('/buildings', 'GET', null, token);
 
-        // Then fetch each building individually to get detailed device data with readings
         const buildingsWithDetails = await Promise.all(
           buildingsListData.map(async (building) => {
             try {
@@ -90,7 +85,7 @@ function Home() {
               return detailedBuilding;
             } catch (err) {
               console.error(`Failed to fetch details for building ${building._id}:`, err);
-              return { ...building, devices: [] }; // Fallback with empty devices
+              return { ...building, devices: [] };
             }
           })
         );
@@ -98,7 +93,6 @@ function Home() {
         setBuildings(buildingsWithDetails);
         console.log("🏠 All Buildings with Details:", buildingsWithDetails);
 
-        // Generate alerts from all devices
         const allAlertsFromDevices = [];
         let totalDevices = 0;
         let criticalCount = 0;
@@ -114,7 +108,6 @@ function Home() {
               console.log(`🚨 Generated ${deviceAlerts.length} alerts for ${device.name}`);
               allAlertsFromDevices.push(...deviceAlerts);
 
-              // Count alert types
               deviceAlerts.forEach(alert => {
                 if (alert.severity === 'critical') criticalCount++;
                 if (alert.severity === 'warning') warningCount++;
@@ -125,7 +118,6 @@ function Home() {
 
         console.log(`📊 Total alerts generated: ${allAlertsFromDevices.length}`);
 
-        // Sort alerts by timestamp (newest first)
         allAlertsFromDevices.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
         setAllAlerts(allAlertsFromDevices);

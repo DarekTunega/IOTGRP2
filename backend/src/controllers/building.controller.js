@@ -37,7 +37,7 @@ export const getBuildingById = async (req, res) => {
       building.devices.map(async (device) => {
         const readings = await CO2Reading.find({ device: device._id })
           .sort({ timestamp: -1 })
-          .limit(50);
+          .limit(672);
         return {
           ...device.toObject(),
           readings
